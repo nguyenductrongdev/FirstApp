@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, Alert, Button } from 'react-native';
 
 import { Calendar, CalendarList, Agenda } from 'react-native-calendars';
 import { useState } from "react";
+import moment from 'moment';
 
 
 export default function App() {
@@ -11,11 +12,26 @@ export default function App() {
     return (
         <View style={styles.container}>
             <Calendar
+                markingType={'period'}
                 maxDate={new Date().toISOString().slice(0, 10)}
                 markedDates={(() => {
-                    let markedDatesResult = {};
-                    for (let timestamp of markedDates) {
-                        markedDatesResult[new Date(timestamp).toISOString().slice(0, 10)] = { selected: true, selectedColor: 'blue' };
+                    markedDatesResult = {}
+                    // define util functions
+                    const toYYYYMMDD = timestamp => new Date(timestamp).toISOString().slice(0, 10)
+                    const getDistanceDays = (xTimeStamp, yTimeStamp) => Math.abs((xTimeStamp - yTimeStamp) / (1000 * 3600 * 24));
+
+                    let baseAttributes = {
+                        color: 'darkblue',
+                        textColor: '#eee',
+                    }
+                    let sortedMarkedDates = markedDates.sort((a, b) => a - b);
+                    for (let i = 0; i < sortedMarkedDates.length; i++) {
+                        let attribute = {
+                            ...baseAttributes,
+                            startingDay: i == 0 || getDistanceDays(sortedMarkedDates[i], sortedMarkedDates[i - 1]) > 1,
+                            endingDay: i === sortedMarkedDates.length - 1 || getDistanceDays(sortedMarkedDates[i], sortedMarkedDates[i + 1]) > 1,
+                        }
+                        markedDatesResult[toYYYYMMDD(sortedMarkedDates[i])] = attribute;
                     }
                     return markedDatesResult;
                 })()}
@@ -47,11 +63,11 @@ export default function App() {
             </Text>
             <Button
                 title='Clear All'
-                color="#841584"
+                color="darkblue"
                 onPress={() => setMarkedDates([])}
             />
             <StatusBar style="auto" />
-        </View >
+        </View>
     );
 }
 
