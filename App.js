@@ -2,12 +2,21 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, Alert, Button } from 'react-native';
 
 import { Calendar, CalendarList, Agenda } from 'react-native-calendars';
-import { useState } from "react";
-import moment from 'moment';
-
+import { v4 as uuidv4 } from 'uuid';
+import { useState, useEffect } from "react";
+import axios from 'axios';
+import env from './env';
 
 export default function App() {
     const [markedDates, setMarkedDates] = useState([]);
+
+    useEffect(() => {
+        async function fetchMarkedDates() {
+            let response = await axios.get(env.API_URL + '/marked-dates');
+            setMarkedDates(response.data.markedDates.map(date => parseInt(date.timestamp)));
+        }
+        fetchMarkedDates();
+    }, [])
 
     return (
         <View style={styles.container}>
@@ -41,17 +50,36 @@ export default function App() {
                         `${new Date(day.timestamp).toDateString()} will be marked!`,
                         [
                             {
-                                text: 'Unmark', onPress: () => {
-                                    let newMarkedDates = new Set(markedDates);
-                                    newMarkedDates.delete(day.timestamp);
-                                    setMarkedDates([...newMarkedDates]);
+                                text: 'Unmark', onPress: async () => {
+                                    try {
+                                        let newMarkedDates = new Set(markedDates);
+                                        await axios.delete(env.API_URL + "/marked-dates", {
+                                            data: { timestamp: day.timestamp }
+                                        });
+                                        newMarkedDates.delete(day.timestamp);
+                                        setMarkedDates([...newMarkedDates]);
+                                    } catch (err) {
+                                        Alert.alert("Error", err.message);
+                                    }
                                 }
                             },
                             {
                                 text: 'Canncel', onPress: () => console.log('Canncel')
                             },
                             {
-                                text: 'Mark', onPress: () => setMarkedDates([...new Set([...markedDates, day.timestamp])])
+                                text: 'Mark', onPress: async () => {
+                                    try {
+                                        console.log("starting");
+                                        setMarkedDates([...new Set([...markedDates, day.timestamp])]);
+                                        await axios.post(env.API_URL + "/marked-dates", {
+                                            timestamp: day.timestamp,
+                                            cost: 35000,
+                                        });
+                                        console.log("create done");
+                                    } catch (err) {
+                                        console.log({ err });
+                                    }
+                                }
                             },
                         ],
                         { cancelable: true },
@@ -64,7 +92,14 @@ export default function App() {
             <Button
                 title='Clear All'
                 color="darkblue"
-                onPress={() => setMarkedDates([])}
+                onPress={async () => {
+                    setMarkedDates([]);
+                    for (let timestamp of markedDates) {
+                        await axios.delete(env.API_URL + "/marked-dates", {
+                            data: { timestamp }
+                        });
+                    }
+                }}
             />
             <StatusBar style="auto" />
         </View>
