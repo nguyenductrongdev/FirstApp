@@ -12,8 +12,12 @@ export default function App() {
 
     useEffect(() => {
         async function fetchMarkedDates() {
-            let response = await axios.get(env.API_URL + '/marked-dates');
-            setMarkedDates(response.data.markedDates.map(date => parseInt(date.timestamp)));
+            try {
+                let response = await axios.get(env.API_URL + '/marked-dates');
+                setMarkedDates(response.data.markedDates.map(date => parseInt(date.timestamp)));
+            } catch (e) {
+                Alert.alert("Error", e.message);
+            }
         }
         fetchMarkedDates();
     }, [])
@@ -50,9 +54,16 @@ export default function App() {
                         `${new Date(day.timestamp).toDateString()} will be marked!`,
                         [
                             {
+                                text: 'Canncel', onPress: () => console.log('Canncel')
+                            },
+                            {
                                 text: 'Unmark', onPress: async () => {
                                     try {
                                         let newMarkedDates = new Set(markedDates);
+                                        if (!markedDates.find(timestamp => day.timestamp === timestamp)) {
+                                            Alert.alert('Notification', "This date is not already marked");
+                                            return;
+                                        }
                                         await axios.delete(env.API_URL + "/marked-dates", {
                                             data: { timestamp: day.timestamp }
                                         });
@@ -64,20 +75,20 @@ export default function App() {
                                 }
                             },
                             {
-                                text: 'Canncel', onPress: () => console.log('Canncel')
-                            },
-                            {
                                 text: 'Mark', onPress: async () => {
                                     try {
-                                        console.log("starting");
                                         setMarkedDates([...new Set([...markedDates, day.timestamp])]);
+                                        if (markedDates.find(timestamp => day.timestamp === timestamp)) {
+                                            Alert.alert('Notification', "This date is already marked");
+                                            return;
+                                        }
                                         await axios.post(env.API_URL + "/marked-dates", {
                                             timestamp: day.timestamp,
                                             cost: 35000,
                                         });
                                         console.log("create done");
                                     } catch (err) {
-                                        console.log({ err });
+                                        Alert.alert(err.message);
                                     }
                                 }
                             },
